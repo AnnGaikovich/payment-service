@@ -1,0 +1,97 @@
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: payment-service-application
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVER_PORT=8084
+      - APPLICATION_NAME=PaymentService
+      - DB_URL=jdbc:postgresql://payment-db:5432/payment_service_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123456
+      - DB_DRIVER=org.postgresql.Driver
+      - DB_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - SHOW_SQL=false
+      - FORMAT_SQL=true
+      - SPRING_LIQUIBASE_ENABLED=true
+      - SPRING_LIQUIBASE_CHANGE_LOG=classpath:/db/changelog/db.changelog-master.yaml
+      - LOG_SQL=DEBUG
+      - USER_SERVICE_URL=http://user-service:8080
+      - USER_SERVICE_API_KEY=internal-auth-key-12345
+      - ORDER_SERVICE_URL=http://order-service:8081
+      - ORDER_SERVICE_API_KEY=internal-auth-key-12345
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=none
+      - SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT=30000
+      - SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=10
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    volumes:
+      - ./src/main/resources/keys:/app/keys
+    networks:
+      - microservices-network
+
+  payment-db:
+    image: postgres:15-alpine
+    container_name: payment-service-postgres
+    environment:
+      POSTGRES_DB: payment_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payment_service_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: payment-service-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft режим (без ZooKeeper)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_payment_data:
+
+networks:
+  microservices-network:
+    driver: bridge

@@ -1,0 +1,11 @@
+.git
+.gitignore
+README.md
+*.iml
+.idea
+.mvn/
+mvnw
+mvnw.cmd
+logs/
+*.log
+.DS_Store

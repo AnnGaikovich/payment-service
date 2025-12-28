@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/integers/",
+    "queryParameters": {
+      "num": { "equalTo": "1" },
+      "min": { "equalTo": "1" },
+      "max": { "equalTo": "100" },
+      "col": { "equalTo": "1" },
+      "base": { "equalTo": "10" },
+      "format": { "equalTo": "plain" },
+      "rnd": { "equalTo": "new" }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/plain"
+    },
+    "body": "42"
+  }
+}
