@@ -1,0 +1,76 @@
+# src/test/resources/application-test.yml
+spring:
+  application:
+    name: PaymentServiceTest
+
+  # PostgreSQL конфигурация (будет переопределена TestContainers)
+  datasource:
+    url: jdbc:tc:postgresql:15:///payment_service_test?TC_INITSCRIPT=test-data.sql
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  # JPA конфигурация
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Kafka конфигурация (будет переопределена TestContainers)
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: paymentEvent:org.example.paymentservice.dto.PaymentEventDTO
+
+  # Отключаем Liquibase для тестов
+  liquibase:
+    enabled: false
+
+  # WireMock для внешних сервисов
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            url: http://localhost:${wiremock.server.port}
+
+# Тестовые URL для Feign клиентов
+user:
+  service:
+    url: http://localhost:${wiremock.server.port}
+
+order:
+  service:
+    url: http://localhost:${wiremock.server.port}
+
+# Отключаем Security для тестов
+security:
+  basic:
+    enabled: false
+
+# Тестовый JWT ключ (можно использовать фиктивный)
+app:
+  jwt:
+    public-key: classpath:keys/test-public.pem
+
+# Логирование для тестов
+logging:
+  level:
+    org.example.paymentservice: DEBUG
+    org.testcontainers: INFO
+    com.github.tomakehurst.wiremock: INFO
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: WARN

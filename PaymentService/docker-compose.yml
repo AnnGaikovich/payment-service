@@ -1,0 +1,110 @@
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: payment-service-application
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVER_PORT=8084
+      - APPLICATION_NAME=PaymentService
+      - MONGODB_URI=mongodb://payment-mongo:27017/payment_service_db
+      - MONGODB_USERNAME=root
+      - MONGODB_PASSWORD=123456
+      - SHOW_SQL=false
+      - FORMAT_SQL=true
+      - SPRING_LIQUIBASE_ENABLED=true
+      - SPRING_LIQUIBASE_CHANGE_LOG=classpath:/db/changelog/db.changelog-master.yaml
+      - LOG_SQL=DEBUG
+      - USER_SERVICE_URL=http://user-service:8080
+      - USER_SERVICE_API_KEY=internal-auth-key-12345
+      - ORDER_SERVICE_URL=http://order-service:8081
+      - ORDER_SERVICE_API_KEY=internal-auth-key-12345
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=none
+      - SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT=30000
+      - SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=10
+    depends_on:
+      payment-mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./src/main/resources/keys:/app/keys
+    networks:
+      - microservices-network
+
+  payment-mongo:
+    image: mongo:7.0
+    container_name: payment-service-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: payment_service_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_payment_data:/data/db
+      - mongo_payment_config:/data/configdb
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - microservices-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    networks:
+      - microservices-network
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_payment_data:
+
+networks:
+  microservices-network:
+    external: true
+    name: microservices-network
+    driver: bridge
