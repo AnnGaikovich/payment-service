@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-service-config
+  namespace: default
+data:
+  APPLICATION_NAME: "payment-service"
+  LIQUIBASE_ENABLED: "true"
+  LIQUIBASE_CHANGE_LOG: "classpath:/db/changelog/db.changelog-master.yaml"
+  SHOW_SQL: "false"
+  FORMAT_SQL: "true"
+  LOG_SQL: "DEBUG"
+  DB_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+  DB_DRIVER: "org.postgresql.Driver"
+  MONGODB_AUTHENTICATION_DATABASE: "admin"
+  MONGODB_AUTO_INDEX_CREATION: "true"
+  KAFKA_PRODUCER_RETRIES: "3"
+  KAFKA_PRODUCER_ACKS: "all"
+  KAFKA_SECURITY_PROTOCOL: "PLAINTEXT"
+  KAFKA_SPRING_JSON_ADD_TYPE_HEADERS: "true"
+  KAFKA_KEY_SERIALIZER: "org.apache.kafka.common.serialization.StringSerializer"
+  KAFKA_VALUE_SERIALIZER: "org.springframework.kafka.support.serializer.JsonSerializer"
+  KAFKA_SPRING_JSON_TYPE_MAPPING: "paymentEvent:org.example.paymentservice.dto.PaymentEventDTO"
+  SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
+  SPRING_AOP_AUTO: "true"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+  MANAGEMENT_HEALTH_LIVENESSSTATE_ENABLED: "true"
+  MANAGEMENT_HEALTH_READINESSSTATE_ENABLED: "true"
+  RESILIENCE4J_CIRCUITBREAKER_ENABLED: "true"
+  FEIGN_CIRCUITBREAKER_ENABLED: "false"

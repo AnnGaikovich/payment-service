@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: default
+  labels:
+    app: payment-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+      - name: payment-service
+        image: payment-service:1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 8085
+          name: actuator
+        env:
+        - name: SERVER_PORT
+          value: "8084"
+        - name: APPLICATION_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: payment-service-config
+              key: APPLICATION_NAME
+        - name: DB_URL
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: DB_URL
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: DB_PASSWORD
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: MONGODB_URI
+        - name: MONGODB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: MONGODB_USERNAME
+        - name: MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: MONGODB_PASSWORD
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-cluster:9092"
+        - name: USER_SERVICE_URL
+          value: "http://user-service:8080"
+        - name: USER_SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: USER_SERVICE_API_KEY
+        - name: ORDER_SERVICE_URL
+          value: "http://order-service:8082"
+        - name: ORDER_SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: payment-service-secrets
+              key: ORDER_SERVICE_API_KEY
+        envFrom:
+        - configMapRef:
+            name: payment-service-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8084
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8084
+          initialDelaySeconds: 45
+          periodSeconds: 15
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: jwt-public-key
+          mountPath: /app/keys
+          readOnly: true
+      volumes:
+      - name: jwt-public-key
+        secret:
+          secretName: jwt-public-key
