@@ -1,0 +1,130 @@
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: paymentEvent:org.example.paymentservice.dto.PaymentEventDTO
+      retries: 3
+      acks: all
+    properties:
+      # Общие настройки Kafka
+      security.protocol: PLAINTEXT
+      # Настройки для тестов
+      spring.json.add.type.headers: true
+
+  application:
+    name: ${APPLICATION_NAME:payment-service}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/payment_service_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: ${DB_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+        show_sql: ${SHOW_SQL:false}
+        format_sql: ${FORMAT_SQL:true}
+    show-sql: ${SHOW_SQL:false}
+
+  liquibase:
+    change-log: ${LIQUIBASE_CHANGE_LOG:classpath:/db/changelog/db.changelog-master.yaml}
+    enabled: ${LIQUIBASE_ENABLED:true}
+
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: false
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 5000
+            logger-level: full
+
+  aop:
+    auto: true
+
+data:
+  mongodb:
+    url: ${MONGODB_URI:mongodb://localhost:27017/payment_service_db}
+    username: ${MONGODB_USERNAME:root}
+    password: ${MONGODB_PASSWORD:123456}
+    authentication-database: admin
+    auto-index-creation: true
+
+# JWT Configuration with Public Key
+app:
+  jwt:
+    public-key: classpath:keys/public.pem
+
+# User Service Configuration
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://localhost:8080}
+    api-key: ${USER_SERVICE_API_KEY:internal-auth-key-12345}
+
+# User Service Configuration
+order:
+  service:
+    url: ${ORDER_SERVICE_URL:http://localhost:8081}
+    api-key: ${ORDER_SERVICE_API_KEY:internal-auth-key-12345}
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 10s
+        failure-rate-threshold: 50
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - feign.FeignException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - java.lang.Exception
+    instances:
+      userService:
+        base-config: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: ${LOG_SQL:DEBUG}
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.example.orderservice: DEBUG
+    org.example.orderservice.client.UserServiceClient: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    io.github.resilience4j: DEBUG
