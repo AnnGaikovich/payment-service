@@ -20,7 +20,7 @@ spring:
       spring.json.add.type.headers: true
 
   application:
-    name: ${APPLICATION_NAME:PaymentService}
+    name: ${APPLICATION_NAME:payment-service}
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/payment_service_db}
@@ -107,10 +107,18 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
+      base-path: /actuator
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: always
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
 
 logging:
   level:
