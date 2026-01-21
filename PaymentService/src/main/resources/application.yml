@@ -107,18 +107,39 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
       base-path: /actuator
   endpoint:
     health:
       probes:
         enabled: true
       show-details: always
+  security:
+    enabled: false
   health:
     livenessState:
       enabled: true
     readinessState:
       enabled: true
+  metrics:
+    tags:
+      application: user-service
+
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+
+#Micrometer for Prometheus
+micrometer:
+  tracing:
+    enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
 logging:
   level:
@@ -128,3 +149,7 @@ logging:
     org.example.orderservice.client.UserServiceClient: DEBUG
     org.springframework.cloud.openfeign: DEBUG
     io.github.resilience4j: DEBUG
+    org.springframework.web: DEBUG
+  pattern:
+    level: "%5p [payment-service,%X{traceId:-},%X{spanId:-}]"
+
